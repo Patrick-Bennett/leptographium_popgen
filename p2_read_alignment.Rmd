@@ -127,11 +127,11 @@ This script does the following:
 #$ -N BWA_aligner
 #$ -q fangorn
 #$ -V
-#$ -t 1-124:1
+#$ -t 1-115:1
 
 i=$(expr $SGE_TASK_ID - 1)
 REF="/nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa"
-FILE=( `cat /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/reads.list`)
+FILE=( `cat /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/reads.list`)
 IFS=';' read -a arr <<< "${FILE[$i]}"
 
 mkdir -p sams
