@@ -188,7 +188,7 @@ eval $CMD
 
 ```
 
->Note: The BWA_aligner.sh script is available at `/nfs1/BPP/LeBoldus_Lab/lab_data/BWA_aligner.sh`
+>Note: The BWA_aligner.sh script is available at `/nfs1/BPP/LeBoldus_Lab/lab_data/scripts/BWA_aligner.sh`
 
 ### Procedure
 
