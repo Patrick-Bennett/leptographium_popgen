@@ -96,6 +96,14 @@ for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(
 > Note: 
 The `reads.list file` is at /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/reads.list Copy and paste to your directory
 
+
+We are also getting rid of the musiva reads for this particular list
+
+```bash
+grep -v 'musiva' reads.list > reads.list_final
+mv reads.list_final reads.list
+```
+
 ***
 
 ## Part 3:  Mapping the reads using BWA, sorting the alignments and re-aligning indels
