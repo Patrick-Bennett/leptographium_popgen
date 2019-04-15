@@ -90,7 +90,7 @@ cd /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
 2. Create a script to summarize the data
 
 ```bash
-for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(basename $i| cut -f 3,4 -d "-"); b=$(readlink -f $i); c=$(readlink -f $i| sed 's/R1/R2/g'); printf ${a%%.*}";"$b";"$c"\n"; done > reads.list
+for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(basename $i| cut -f 7,8 -d "-"| cut -f 1 -d "_"); b=$(readlink -f $i); c=$(readlink -f $i| sed 's/R1/R2/g'); printf ${a%%.*}";"$b";"$c"\n"; done > reads.list
 ```
 
 > Note: 
