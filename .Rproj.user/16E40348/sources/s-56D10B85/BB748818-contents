@@ -22,3 +22,36 @@ bash
 for i in /nfs2/hts/illumina/190410_J00107_0201_AH3VJGBBXY_1461/L125678/lane[12]*; do a=$(readlink -f $i); b=$(basename $i); printf "cp "$a" ""/nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/"$b"\n"; done > move_files.sh
 ```
 
+***
+
+# Part 2: Indexing the reference genome
+
+Indexing the genome is a way of simplifying the reference FASTA file so the program can access it rapidly and efficiently. BWA requires an index of the reference genome to map the reads.
+
+What we are going to do is that we are making a symbolic link to the reference genome inside of `LeBoldus_Lab/user_folders/bennetpa/` into a folder called `BSRD_popgen`
+
+## Commands
+
+1. Creating the forder in the structure
+
+```bash
+cd ~/LeBoldus_Lab/user_folders/bennetpa/
+mkdir BSRD_popgen
+```
+
+2. Create the symbolic link for the reference genome
+
+```bash
+cd BSRD_popgen
+ln -s ~/LeBoldus_Lab/web_data/leptographium_references/CMW154.fa .
+```
+
+3. Create the BWA index
+
+For today, we will use qrsh. qrsh is a way in which we can use a host without the need of sending a script. (i.e. Using the machine on the cluster as if it was your machine), meaning that you can use it for all kinds of scripts with no time limit. 
+
+```bash
+qrsh -q fangorn
+cd ~/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
+bwa index CMW154.fa
+```

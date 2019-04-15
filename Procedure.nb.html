@@ -255,11 +255,37 @@ $(document).ready(function () {
 </blockquote>
 <pre class="bash"><code>bash
 for i in /nfs2/hts/illumina/190410_J00107_0201_AH3VJGBBXY_1461/L125678/lane[12]*; do a=$(readlink -f $i); b=$(basename $i); printf &quot;cp &quot;$a&quot; &quot;&quot;/nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/&quot;$b&quot;\n&quot;; done &gt; move_files.sh</code></pre>
+<hr />
+</div>
+</div>
+<div id="part-2-indexing-the-reference-genome" class="section level1">
+<h1>Part 2: Indexing the reference genome</h1>
+<p>Indexing the genome is a way of simplifying the reference FASTA file so the program can access it rapidly and efficiently. BWA requires an index of the reference genome to map the reads.</p>
+<p>What we are going to do is that we are making a symbolic link to the reference genome inside of <code>LeBoldus_Lab/user_folders/bennetpa/</code> into a folder called <code>BSRD_popgen</code></p>
+<div id="commands" class="section level2">
+<h2>Commands</h2>
+<ol style="list-style-type: decimal">
+<li>Creating the forder in the structure</li>
+</ol>
+<pre class="bash"><code>cd ~/LeBoldus_Lab/user_folders/bennetpa/
+mkdir BSRD_popgen</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>Create the symbolic link for the reference genome</li>
+</ol>
+<pre class="bash"><code>cd BSRD_popgen
+ln -s ~/LeBoldus_Lab/web_data/leptographium_references/CMW154.fa .</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>Create the BWA index</li>
+</ol>
+<p>For today, we will use qrsh. qrsh is a way in which we can use a host without the need of sending a script. (i.e. Using the machine on the cluster as if it was your machine), meaning that you can use it for all kinds of scripts with no time limit.</p>
+<pre class="bash"><code>qrsh -q fangorn
+cd ~/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
+bwa index CMW154.fa</code></pre>
 <!-- rnb-text-end -->
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTW92aW5nIExlcHRvZ3JhcGhpdW0gZGF0YSIKb3V0cHV0OiBodG1sX25vdGVib29rCmVkaXRvcl9vcHRpb25zOiAKICBjaHVua19vdXRwdXRfdHlwZTogaW5saW5lCi0tLQoKIyBNb3ZpbmcgdGhlIGZpbGVzIGZyb20gdGhlIENHUkIgc2VxdWVuY2luZyBzdHJ1Y3R1cmUgdG8gdGhlIGxhYl9mb2xkZXIKCi0gKipTb3VyY2U6KiogYC9uZnMyL2h0cy9pbGx1bWluYS8xOTA0MTBfSjAwMTA3XzAyMDFfQUgzVkpHQkJYWV8xNDYxL0wxMjU2NzhgCi0gKipEZXN0aW5hdGlvbjoqKiBgL25mczEvQlBQL0xlQm9sZHVzX0xhYi9sYWJfZGF0YS9sZXB0b2dyYXBoaXVtX3JlYWRzYAoKPiBOb3RlczogTGFuZXMgMSBhbmQgMiBpbmNsdWRlIHRoZSBMZXB0b2dyYXBoaXVtIGRhdGEKCgojIyBTY3JpcHQgMTogQ3JlYXRpbmcgYSBsaXN0IG9mIGRhdGEgdG8gYmUgbW92ZWQgCgo+IFBzZXVkb2NvZGU6IEZvciBlYWNoIG9mIHRoZSBsYW5lMXxsYW5lMiBmYXN0cSwgcGFzdGUgdGhlIGNvbW1hbmQgKGNwKSwgdGhlIHNvdXJjZSBhbmQgdGhlIGRlc3RpbmF0aW9uCgpgYGBiYXNoCmJhc2gKZm9yIGkgaW4gL25mczIvaHRzL2lsbHVtaW5hLzE5MDQxMF9KMDAxMDdfMDIwMV9BSDNWSkdCQlhZXzE0NjEvTDEyNTY3OC9sYW5lWzEyXSo7IGRvIGE9JChyZWFkbGluayAtZiAkaSk7IGI9JChiYXNlbmFtZSAkaSk7IHByaW50ZiAiY3AgIiRhIiAiIi9uZnMxL0JQUC9MZUJvbGR1c19MYWIvbGFiX2RhdGEvbGVwdG9ncmFwaGl1bV9yZWFkcy8iJGIiXG4iOyBkb25lID4gbW92ZV9maWxlcy5zaApgYGAKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTW92aW5nIExlcHRvZ3JhcGhpdW0gZGF0YSIKb3V0cHV0OiBodG1sX25vdGVib29rCmVkaXRvcl9vcHRpb25zOiAKICBjaHVua19vdXRwdXRfdHlwZTogaW5saW5lCi0tLQoKIyBNb3ZpbmcgdGhlIGZpbGVzIGZyb20gdGhlIENHUkIgc2VxdWVuY2luZyBzdHJ1Y3R1cmUgdG8gdGhlIGxhYl9mb2xkZXIKCi0gKipTb3VyY2U6KiogYC9uZnMyL2h0cy9pbGx1bWluYS8xOTA0MTBfSjAwMTA3XzAyMDFfQUgzVkpHQkJYWV8xNDYxL0wxMjU2NzhgCi0gKipEZXN0aW5hdGlvbjoqKiBgL25mczEvQlBQL0xlQm9sZHVzX0xhYi9sYWJfZGF0YS9sZXB0b2dyYXBoaXVtX3JlYWRzYAoKPiBOb3RlczogTGFuZXMgMSBhbmQgMiBpbmNsdWRlIHRoZSBMZXB0b2dyYXBoaXVtIGRhdGEKCgojIyBTY3JpcHQgMTogQ3JlYXRpbmcgYSBsaXN0IG9mIGRhdGEgdG8gYmUgbW92ZWQgCgo+IFBzZXVkb2NvZGU6IEZvciBlYWNoIG9mIHRoZSBsYW5lMXxsYW5lMiBmYXN0cSwgcGFzdGUgdGhlIGNvbW1hbmQgKGNwKSwgdGhlIHNvdXJjZSBhbmQgdGhlIGRlc3RpbmF0aW9uCgpgYGBiYXNoCmJhc2gKZm9yIGkgaW4gL25mczIvaHRzL2lsbHVtaW5hLzE5MDQxMF9KMDAxMDdfMDIwMV9BSDNWSkdCQlhZXzE0NjEvTDEyNTY3OC9sYW5lWzEyXSo7IGRvIGE9JChyZWFkbGluayAtZiAkaSk7IGI9JChiYXNlbmFtZSAkaSk7IHByaW50ZiAiY3AgIiRhIiAiIi9uZnMxL0JQUC9MZUJvbGR1c19MYWIvbGFiX2RhdGEvbGVwdG9ncmFwaGl1bV9yZWFkcy8iJGIiXG4iOyBkb25lID4gbW92ZV9maWxlcy5zaApgYGAKCioqKgoKIyBQYXJ0IDI6IEluZGV4aW5nIHRoZSByZWZlcmVuY2UgZ2Vub21lCgpJbmRleGluZyB0aGUgZ2Vub21lIGlzIGEgd2F5IG9mIHNpbXBsaWZ5aW5nIHRoZSByZWZlcmVuY2UgRkFTVEEgZmlsZSBzbyB0aGUgcHJvZ3JhbSBjYW4gYWNjZXNzIGl0IHJhcGlkbHkgYW5kIGVmZmljaWVudGx5LiBCV0EgcmVxdWlyZXMgYW4gaW5kZXggb2YgdGhlIHJlZmVyZW5jZSBnZW5vbWUgdG8gbWFwIHRoZSByZWFkcy4KCldoYXQgd2UgYXJlIGdvaW5nIHRvIGRvIGlzIHRoYXQgd2UgYXJlIG1ha2luZyBhIHN5bWJvbGljIGxpbmsgdG8gdGhlIHJlZmVyZW5jZSBnZW5vbWUgaW5zaWRlIG9mIGBMZUJvbGR1c19MYWIvdXNlcl9mb2xkZXJzL2Jlbm5ldHBhL2AgaW50byBhIGZvbGRlciBjYWxsZWQgYEJTUkRfcG9wZ2VuYAoKIyMgQ29tbWFuZHMKCjEuIENyZWF0aW5nIHRoZSBmb3JkZXIgaW4gdGhlIHN0cnVjdHVyZQoKYGBgYmFzaApjZCB+L0xlQm9sZHVzX0xhYi91c2VyX2ZvbGRlcnMvYmVubmV0cGEvCm1rZGlyIEJTUkRfcG9wZ2VuCmBgYAoKMi4gQ3JlYXRlIHRoZSBzeW1ib2xpYyBsaW5rIGZvciB0aGUgcmVmZXJlbmNlIGdlbm9tZQoKYGBgYmFzaApjZCBCU1JEX3BvcGdlbgpsbiAtcyB+L0xlQm9sZHVzX0xhYi93ZWJfZGF0YS9sZXB0b2dyYXBoaXVtX3JlZmVyZW5jZXMvQ01XMTU0LmZhIC4KYGBgCgozLiBDcmVhdGUgdGhlIEJXQSBpbmRleAoKRm9yIHRvZGF5LCB3ZSB3aWxsIHVzZSBxcnNoLiBxcnNoIGlzIGEgd2F5IGluIHdoaWNoIHdlIGNhbiB1c2UgYSBob3N0IHdpdGhvdXQgdGhlIG5lZWQgb2Ygc2VuZGluZyBhIHNjcmlwdC4gKGkuZS4gVXNpbmcgdGhlIG1hY2hpbmUgb24gdGhlIGNsdXN0ZXIgYXMgaWYgaXQgd2FzIHlvdXIgbWFjaGluZSksIG1lYW5pbmcgdGhhdCB5b3UgY2FuIHVzZSBpdCBmb3IgYWxsIGtpbmRzIG9mIHNjcmlwdHMgd2l0aCBubyB0aW1lIGxpbWl0LiAKCmBgYGJhc2gKcXJzaCAtcSBmYW5nb3JuCmNkIH4vTGVCb2xkdXNfTGFiL3VzZXJfZm9sZGVycy9iZW5uZXRwYS9CU1JEX3BvcGdlbgpid2EgaW5kZXggQ01XMTU0LmZhCmBgYAo=</div>
 
 
 
