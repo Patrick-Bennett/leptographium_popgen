@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 1. Creating an index in BWA (More info [here](http://seqanswers.com/forums/showthread.php?t=25553)
 2. Creating a list of the reads and their location
 3. Mapping the reads using BWA, compressing the alignments and sorting them
+4. Alignment statistics
 
 ***
 
@@ -197,3 +198,55 @@ After copying the script to the directory of interest, run:
 ```bash
 qsub BWA_aligner.sh
 ```
+
+***
+
+# Part 4: Alignment statistics on SAM files
+
+We need to create statistics for the alignments. To do so we need to use the `samtools flagstat` program. We are using the SAM files because it will give us the original number of reads mapped to the reference. It takes 3 steps:
+
+1. Creating the list of sams
+2. Running `samtools flagstat` for all SAM files
+3. Summary of results
+
+## Procedure
+
+1. Creating the list of sams
+
+```bash
+cd /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/
+bash
+for i in sams/*; do a=$(basename $i); b=$(readlink -f $i); printf ${a%%.*}";"$b"\n"; done > sams.list
+```
+
+2. `stats_sam.sh` - Script to run `samtools flagstat`
+
+### Script
+
+```stats_sam.sh
+#!/bin/bash
+#$ -cwd
+#$ -S /bin/bash
+#$ -N stats_sam
+#$ -q fangorn
+#$ -V
+#$ -t 1-124:1
+
+i=$(expr $SGE_TASK_ID - 1)
+FILE=( `cat /raid1/home/bpp/tabimaj/sams.list`)
+IFS=';' read -a arr <<< "${FILE[$i]}"
+
+mkdir -p alin_stats
+
+samtools flagstat ${arr[1]} > alin_stats/${arr[0]}
+```
+
+Running the script:
+
+```bash
+qsub stats_sam.sh
+```
+
+3.  Summary of results
+
+>TBD
