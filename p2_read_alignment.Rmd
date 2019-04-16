@@ -91,11 +91,19 @@ cd /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
 2. Create a script to summarize the data
 
 ```bash
-for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(basename $i| cut -f 3,4 -d "-"); b=$(readlink -f $i); c=$(readlink -f $i| sed 's/R1/R2/g'); printf ${a%%.*}";"$b";"$c"\n"; done > reads.list
+for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(basename $i| cut -f 7,8 -d "-"| cut -f 1 -d "_"); b=$(readlink -f $i); c=$(readlink -f $i| sed 's/R1/R2/g'); printf ${a%%.*}";"$b";"$c"\n"; done > reads.list
 ```
 
 > Note: 
 The `reads.list file` is at /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/reads.list Copy and paste to your directory
+
+
+We are also getting rid of the musiva reads for this particular list
+
+```bash
+grep -v 'musiva' reads.list > reads.list_final
+mv reads.list_final reads.list
+```
 
 ***
 
@@ -120,11 +128,11 @@ This script does the following:
 #$ -N BWA_aligner
 #$ -q fangorn
 #$ -V
-#$ -t 1-124:1
+#$ -t 1-115:1
 
 i=$(expr $SGE_TASK_ID - 1)
 REF="/nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa"
-FILE=( `cat /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/reads.list`)
+FILE=( `cat /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/reads.list`)
 IFS=';' read -a arr <<< "${FILE[$i]}"
 
 mkdir -p sams
