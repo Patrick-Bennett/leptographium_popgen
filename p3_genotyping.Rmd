@@ -40,7 +40,7 @@ Dor more info go [here](https://gatkforums.broadinstitute.org/gatk/discussion/16
 
 ```bash
 # PICARD index
-/raid1/home/bpp/tabimaj/bin/jre1.8.0_144/bin/java -Xmx50g -Djava.io.tmpdir=/data -jar /raid1/home/bpp/tabimaj/bin/picard.jar CreateSequenceDictionary.jar R=CMW154.fa O=CMW154.dict
+/raid1/home/bpp/tabimaj/bin/jre1.8.0_144/bin/java -Xmx50g -Djava.io.tmpdir=/data -jar /raid1/home/bpp/tabimaj/bin/picard.jar CreateSequenceDictionary R=CMW154.fa O=CMW154.dict
 
 # Samtools index
 samtools faidx CMW154.fa
@@ -87,7 +87,7 @@ echo "Epoch start:" $myEpoch
 To run the script do 
 
 ```bash
-qsub stats_sam.sh
+qsub gVCF.sh
 ```
 
 ***
@@ -105,7 +105,7 @@ After the gVCF files are done, we need to combine them into a single VCF file.
 
 
 ```bash
-for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gVCF/*; do readlink -f $i; done > bams.list
+for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gVCF/*; do readlink -f $i; done > gvcf.list
 ```
 
 
