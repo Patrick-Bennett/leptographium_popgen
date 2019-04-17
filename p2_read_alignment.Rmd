@@ -258,6 +258,7 @@ qsub stats_sam.sh
 To do the summary of results use this one-liner:
 
 ```bash
+cd /home/bpp/tabimaj/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/alin_stats
 for i in *; do a=$( grep "properly" $i); printf '%s ' $i"\t"$a"\n"; done | perl -pe 's/\\n/\n/g' | perl -pe 's/\\t/\t/g' > mapping_percentage.txt
 ```
 
