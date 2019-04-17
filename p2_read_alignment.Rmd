@@ -9,8 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Aligning the reads to the reference genome
-
 ## General Steps
 
 1. Creating an index in BWA (More info [here](http://seqanswers.com/forums/showthread.php?t=25553)
