@@ -9,31 +9,32 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## General Steps
+# General Steps
 
 1. Creating a genotype file per sample
 2. Combining all individual genotypes into a large VCF file
 
 ***
 
-## Part 1: Creating a genotype file per sample
+# Part 1: Creating a genotype file per sample
 
 In order to facilitate the process of genotyping we will create one genotype file (`gVCF`) file per sample in GATK Haplotype caller. I have written a gVCF.sh script for this purpose. The order to proceed is this
 
 1. Creating a list of BAMS
 2. Creating the index files (.dict and .fai).
-2. Running GATK
+3. Running GATK
 
-### Procedure
+## Procedure
 
-#### Creating a list of BAMS
+### Creating a list of BAMS
 
 Its the same script we have been using so far but this time for `bams/*_dupmrk.bam`, as these are the BAM files with the duplicates marked and the indels realigned 
 
 ```bash
 for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/bams/*_dupmrk.bam; do a=$(basename $i| sed 's/_dupmrk.bam//g'); b=$(readlink -f $i); printf $a";"$b"\n"; done > bams.list
 ```
-#### Creating the index files (.dict and .fai).
+
+### Creating the index files (.dict and .fai).
 
 Dor more info go [here](https://gatkforums.broadinstitute.org/gatk/discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference)
 
@@ -45,9 +46,7 @@ Dor more info go [here](https://gatkforums.broadinstitute.org/gatk/discussion/16
 samtools faidx CMW154.fa
 ```
 
-***
-
-#### Running GATK
+### Running GATK
 
 I have created the GATK script `gVCF.sh`. It uses the list of BAMs and use GATK and the indices we created to genotype the data
 
@@ -91,4 +90,49 @@ To run the script do
 qsub stats_sam.sh
 ```
 
-****
+***
+
+# Part 2: Combining all genotypes into a large VCF file
+
+After the gVCF files are done, we need to combine them into a single VCF file. 
+
+1. Creating a list of gVCF
+2. Running GATK
+
+## Procedure
+
+### Creating a list of gVCF
+
+
+```bash
+for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gVCF/*; do readlink -f $i; done > bams.list
+```
+
+
+### Running GATK
+
+```Final_GATK.sh
+
+#! /bin/bash
+#$ -N Final_vcf
+#$ -V
+#$ -cwd
+#$ -S /bin/bash
+#$ -q fangorn
+
+
+i=$(expr $SGE_TASK_ID - 1)
+
+REF="/nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa"
+
+CMD="/raid1/home/bpp/tabimaj/bin/jre1.8.0_144/bin/java -Xmx4g -Djava.io.tmpdir=/data -jar /raid1/home/bpp/tabimaj/bin/GenomeAnalysisTK.jar -T GenotypeGVCFs -R $REF -V gvcf.list  -o Leptographium_2019.vcf.gz"
+echo $CMD
+eval $CMD
+
+date
+
+# EOF.
+```
+
+
+
