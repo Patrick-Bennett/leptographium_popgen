@@ -42,7 +42,7 @@ ln -s ~/LeBoldus_Lab/web_data/leptographium_references/CMW154.fa .
 
 3. Create the BWA index
 
-For today, we will use qrsh. qrsh is a way in which we can use a host without the need of sending a script. (i.e. Using the machine on the cluster as if it was your machine), meaning that you can use it for all kinds of scripts with no time limit. 
+For today, we will use qrsh. qrsh is a way in which we can use a host without the need of sending a script. (i.e. Using the machine on the cluster as if it was your machine), meaning that you can use it for all kinds of scripts with no time limit.
 
 ```bash
 qrsh -q fangorn
@@ -92,7 +92,7 @@ cd /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
 for i in /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/lane*_R1_*; do a=$(basename $i| cut -f 7,8 -d "-"| cut -f 1 -d "_"); b=$(readlink -f $i); c=$(readlink -f $i| sed 's/R1/R2/g'); printf ${a%%.*}";"$b";"$c"\n"; done > reads.list
 ```
 
-> Note: 
+> Note:
 The `reads.list file` is at /nfs1/BPP/LeBoldus_Lab/lab_data/leptographium_reads/reads.list Copy and paste to your directory
 
 
@@ -109,7 +109,7 @@ mv reads.list_final reads.list
 
 We have created a general script for this function called `BWA_aligner.sh`.
 
-This script does the following: 
+This script does the following:
 
 1. Reads the `reads.list` we created in part 2 and maps the paired end reads to the reference index we made in part 1. (Step 1: BWA mapping)
 
@@ -255,4 +255,10 @@ qsub stats_sam.sh
 
 3.  Summary of results
 
->TBD
+To do the summary of results use this one-liner:
+
+```bash
+for i in *; do a=$( grep "properly" $i); printf '%s ' $i"\t"$a"\n"; done | perl -pe 's/\\n/\n/g' | perl -pe 's/\\t/\t/g' > mapping_percentage.txt
+```
+
+Then, that `mapping_percentage.txt` file can be used in R or whatever other program to summarize the data
