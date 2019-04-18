@@ -10,9 +10,9 @@
 
 mkdir -p genotyped
 
-i=$(expr $SGE_TASK_ID)
+i=$(expr $SGE_TASK_ID - 1)
 
-CMD="/raid1/home/bpp/tabimaj/bin/gatk-4.0.1.2/gatk --java-options '-Xmx40g -Djava.io.tmpdir=/data -XX:ParallelGCThreads=1' GenotypeGVCFs -R /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa -L scaffold_$SGE_TASK_ID -V Leptographium_2019.gvcf.gz -new-qual -O genotyped/Lepto.$SGE_TASK_ID.vcf.gz"
+CMD="/raid1/home/bpp/tabimaj/bin/gatk-4.0.1.2/gatk --java-options '-Xmx40g -Djava.io.tmpdir=/data -XX:ParallelGCThreads=1' GenotypeGVCFs -R /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa -L CMW154_Contig$SGE_TASK_ID -V Leptographium_2019.gvcf.gz -new-qual -O genotyped/Lepto.$SGE_TASK_ID.vcf.gz"
 
 echo $CMD
 eval $CMD
