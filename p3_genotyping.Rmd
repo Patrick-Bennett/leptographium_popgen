@@ -97,24 +97,25 @@ qsub gVCF.sh
 After the gVCF files are done, we need to combine them into a single VCF file. 
 
 1. Creating a list of gVCF
-2. Running GATK
+2. Running CombineGVCFs to combine all gVCF
+3. Genotype the combined gVCF 
 
 ## Procedure
 
 ### Creating a list of gVCF
-
 
 ```bash
 for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gVCF/*; do readlink -f $i; done > gvcf.list
 ```
 
 
-### Running GATK
+### Running CombineGVCFs to combine all gVCF for each scaffold
 
-```Final_GATK.sh
+```Combine_vcf.sh
+
 
 #! /bin/bash
-#$ -N Final_vcf
+#$ -N Combine_vcf
 #$ -V
 #$ -cwd
 #$ -S /bin/bash
@@ -125,15 +126,47 @@ i=$(expr $SGE_TASK_ID - 1)
 
 REF="/nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa"
 
-CMD="/raid1/home/bpp/tabimaj/bin/jre1.8.0_144/bin/java -Xmx4g -Djava.io.tmpdir=/data -jar /raid1/home/bpp/tabimaj/bin/GenomeAnalysisTK.jar -T GenotypeGVCFs -R $REF -V gvcf.list  -o Leptographium_2019.vcf.gz"
+CMD="~/bin/gatk-4.0.1.2/gatk CombineGVCFs -R $REF -V gvcf.list  -O Leptographium_2019.gvcf.gz"
 echo $CMD
 eval $CMD
 
 date
 
 # EOF.
+```
 
+To run the script do 
+
+```bash
+qsub Combine_vcf.sh
+```
+
+### Genotype the combined gVCF for each scaffold
+
+```Genotype_chrom.sh
+#!/bin/bash
+#$ -V
+#$ -v TMPDIR=/data
+#$ -N Geno_chrom
+#$ -l mem_free=40G
+#$ -S /bin/bash
+#$ -cwd
+#$ -t 1-122
+#$ -tc 10
+
+mkdir -p genotyped
+
+i=$(expr $SGE_TASK_ID)
+
+CMD="~/bin/gatk-4.0.1.2/gatk --java-options '-Xmx40g -Djava.io.tmpdir=/data -XX:ParallelGCThreads=1' GenotypeGVCFs -R /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa -L scaffold_$SGE_TASK_ID -V Leptographium_2019.gvcf.gz -new-qual -O genotyped/Lepto.$SGE_TASK_ID.vcf.gz"
+
+echo $CMD
+eval $CMD
+
+# EOF.
 ```
 
 
-
+```bash
+qsub Combine_vcf.sh
+```
