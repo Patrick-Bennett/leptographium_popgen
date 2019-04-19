@@ -9,3 +9,4 @@ This folder contains scripts used for the Leptographium population genomics anal
 3. `gVCF.sh`: Batch script to individually genotype each sample from a list of sorted BAMs. Remember to build a reference index as explained by [this page](https://gatkforums.broadinstitute.org/gatk/discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference)
 4. `Combine_vcf.sh`: Combines all gVCF files in GATK, replaces outdated `Final_vcf.sh`
 5. `Genotype_chrom.sh`: Generates population-wide genotypes per chromosome for the combined gVCF from `Combine_vcf.sh`
+6. `Filtering_vcf.R` and `Filtering_vcf.sh`: Filters VCF files by DP (DP > 10), MQ (MQ > 50), MAF (MAF > Allele present in two samples), and per-variant missingness (removes variants with more than 20% missing data)

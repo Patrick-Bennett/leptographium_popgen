@@ -170,3 +170,36 @@ eval $CMD
 ```bash
 qsub Genotype_chrom.sh
 ```
+
+
+# Part 3: Filtering vcf using vcfR
+
+After the VCF per chromosome is obtained, we need to filter them.
+
+## Parameters
+ - DP (DP > 10)
+ - MQ (MQ > 50)
+ - MAF (MAF > Allele present in two samples)
+ - Per-variant missingness (removes variants with more than 20% missing data)
+
+## Steps
+
+1. Creating a list of chromosomal VCF
+2. Running Filtering.vcf.sh
+
+## Procedure
+
+1. Creating a list of chromosomal VCF
+
+```bash
+cd /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen
+for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/genotyped/*.vcf.gz; do readlink -f $i; done > chrom_vcf.list
+```
+
+2. Running `Filtering_vcf.sh`
+
+> NOTE: Make sure that `Filtering_vcf.sh` and `Filtering_vcf.R` are in the same folder
+
+```bash
+qsub Filtering_vcf.sh
+```
