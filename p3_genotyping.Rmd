@@ -28,7 +28,7 @@ In order to facilitate the process of genotyping we will create one genotype fil
 
 ### Creating a list of BAMS
 
-Its the same script we have been using so far but this time for `bams/*_dupmrk.bam`, as these are the BAM files with the duplicates marked and the indels realigned 
+Its the same script we have been using so far but this time for `bams/*_dupmrk.bam`, as these are the BAM files with the duplicates marked and the indels realigned
 
 ```bash
 for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/bams/*_dupmrk.bam; do a=$(basename $i| sed 's/_dupmrk.bam//g'); b=$(readlink -f $i); printf $a";"$b"\n"; done > bams.list
@@ -84,7 +84,7 @@ echo "Epoch start:" $myEpoch
 # EOF.
 ```
 
-To run the script do 
+To run the script do
 
 ```bash
 qsub gVCF.sh
@@ -94,18 +94,18 @@ qsub gVCF.sh
 
 # Part 2: Combining all genotypes into a large VCF file
 
-After the gVCF files are done, we need to combine them into a single VCF file. 
+After the gVCF files are done, we need to combine them into a single VCF file.
 
 1. Creating a list of gVCF
 2. Running CombineGVCFs to combine all gVCF
-3. Genotype the combined gVCF 
+3. Genotype the combined gVCF
 
 ## Procedure
 
 ### Creating a list of gVCF
 
 ```bash
-for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gvcf/*.vcf.gz; do readlink -f $i; done > gvcf.list
+for i in /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/gVCF/*; do readlink -f $i; done > gvcf.list
 ```
 
 
@@ -126,7 +126,7 @@ i=$(expr $SGE_TASK_ID - 1)
 
 REF="/nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa"
 
-CMD="~/bin/gatk-4.0.1.2/gatk CombineGVCFs -R $REF -V gvcf.list  -O Leptographium_2019.gvcf.gz"
+CMD="/raid1/home/bpp/tabimaj/bin/gatk-4.0.1.2/gatk CombineGVCFs -R $REF -V gvcf.list  -O Leptographium_2019.gvcf.gz"
 echo $CMD
 eval $CMD
 
@@ -135,7 +135,7 @@ date
 # EOF.
 ```
 
-To run the script do 
+To run the script do
 
 ```bash
 qsub Combine_vcf.sh
@@ -158,7 +158,7 @@ mkdir -p genotyped
 
 i=$(expr $SGE_TASK_ID)
 
-CMD="~/bin/gatk-4.0.1.2/gatk --java-options '-Xmx40g -Djava.io.tmpdir=/data -XX:ParallelGCThreads=1' GenotypeGVCFs -R /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa -L scaffold_$SGE_TASK_ID -V Leptographium_2019.gvcf.gz -new-qual -O genotyped/Lepto.$SGE_TASK_ID.vcf.gz"
+CMD="/raid1/home/bpp/tabimaj/bin/gatk-4.0.1.2/gatk --java-options '-Xmx40g -Djava.io.tmpdir=/data -XX:ParallelGCThreads=1' GenotypeGVCFs -R /nfs1/BPP/LeBoldus_Lab/user_folders/bennetpa/BSRD_popgen/CMW154.fa -L scaffold_$SGE_TASK_ID -V Leptographium_2019.gvcf.gz -new-qual -O genotyped/Lepto.$SGE_TASK_ID.vcf.gz"
 
 echo $CMD
 eval $CMD
