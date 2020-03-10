@@ -1,0 +1,164 @@
+---
+title: "Filtering Leptographium data 2020"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+According to [issue 5](https://github.com/LeBoldus-Lab/leptographium_popgen/issues/5), the DP masks aren't working. I noticed that there are three main issues:
+
+- The `Filtering_vcf.R` script was modified and its not saving any modified DP's after the filtering steps
+- The percentage of samples with missing data is quite large, so we need to add an additional step to remove samples with high missing data
+- The filtering steps should be performed BEFORE the final VCF is formed with all samples. In this case I have simplified the script for it to work in large datasets. However, the filtering steps have to be done in a **chromosome by chromosome basis**
+
+# Reading in the data
+
+```{r}
+library(vcfR)
+library(tidyverse)
+
+vcf <- read.vcfR("Leptographium_2020_NOMISS_filtered.vcf.gz")
+raw.vcf <- nrow(vcf)
+```
+
+
+# Calculating the number of polymorphic sites and removing all non-biallelic sites
+```{r}
+vcf <- vcf[is.polymorphic(vcf, na.omit = T)]
+poly.vcf <- nrow(vcf)
+vcf <- vcf[is.biallelic(vcf)]
+biallelic.vcf <- nrow(vcf)
+```
+
+129,559 Polymorphic sites
+126,502 Biallelic sites
+
+# Filtering by DP:
+
+```{R}
+dp.vc <- extract.gt(vcf, element = "DP", as.numeric = T)
+gt.vc <- extract.gt(vcf, element = "GT", as.numeric = T)
+
+## dp.vc backup
+dp.vc.bk <- dp.vc
+gt.vc.bk <- gt.vc
+```
+
+## Filtering by DP (DP (10x < x > 95%))
+
+```{r}
+## Creating quantiles based in the lower 5% and the higher 95%
+sums <- apply(dp.vc.bk, 2, function (x) quantile(x, probs=c(0.05, 0.50, 0.95), na.rm = T))
+## Here is where we add the min depth (10x)
+sums[1,][sums[1,] < 10] <- 10
+dp.all.2 <- sweep(dp.vc.bk, MARGIN=2, FUN="-", sums[1,])
+dp.vc[dp.all.2 <= 0] <- NA
+dp.all.2 <- sweep(dp.vc.bk, MARGIN=2, FUN="-", sums[3,])
+dp.vc[dp.all.2 > 0] <- NA
+
+# Changing GT
+vcf@gt[,-1][is.na(dp.vc)] <- NA
+```
+
+# Filtering by maximum MQ (MQ == 50)
+
+```{r}
+mq <- extract.info(vcf, element = "MQ", as.numeric = T)
+## Creating mask
+mask.mq <- rep(T, nrow(vcf))
+## Filtering in the mast
+mask.mq[mq < 50] <- F
+```
+
+Regions removed by MQ: `r  biallelic.vcf - sum(mask.mq)`
+
+# Filtering on MAF
+
+```{r}
+maf.tresh <- 2/(ncol(vcf@gt[,-1]))
+cat("MAF threshold:", maf.tresh, "\n")
+## Creating mast
+library(stringr)
+mask.maf <- rep(T, nrow(vcf))
+## Extracting GT info and calculating MAF
+class(gt.vc) <- 'numeric'
+mask.maf <- apply(gt.vc, 1, function (x) min(table(x)))/ncol(vcf@gt) >= maf.tresh
+```
+
+Regions removed by MAF: `r biallelic.vcf - sum(mask.maf)`
+
+# Filtering by missing data:
+
+```{r}
+mask.miss <- rep(T, nrow(vcf))
+gt.vc <- extract.gt(vcf, element = "GT", as.numeric = T)
+mask.miss <- apply(gt.vc, 1, function (x) sum(is.na(x))/ncol(gt.vc)) <= 0.00
+```
+
+Regions removed by MAF: `r biallelic.vcf - sum(mask.miss)`
+
+
+We would only keep 9 regions with a MAF of 0 if we do the masking this way. We are going to have to remove samples with high amount of missing data (More than 10% missing data)
+
+
+## Missing DP per sample (Missing more than 20% data)
+
+Why 20% data? Because is the maximum percentage of missing data to filter in order to keep most data.
+
+```{r}
+h <- apply(dp.vc, 2, function (x) is.na(x) %>% sum/nrow(dp.vc)) %>% hist()
+h$density = h$counts/sum(h$counts)*100
+plot(h,freq=FALSE)
+```
+
+As seen in the plot, 87% of the data (141 samples) 
+
+```{r}
+missing.samples <- colnames(dp.vc)[apply(dp.vc, 2, function (x) is.na(x) %>% sum/nrow(dp.vc)) > 0.2]
+vcf@gt <- vcf@gt[,!colnames(vcf@gt) %in% missing.samples]
+
+mask.miss <- rep(T, nrow(vcf))
+gt.vc <- extract.gt(vcf, element = "GT", as.numeric = T)
+mask.miss <- apply(gt.vc, 1, function (x) sum(is.na(x))/ncol(gt.vc)) <= 0.00
+```
+
+# Processing masks
+
+```{r}
+mask.vcf <- cbind(mask.mq, mask.maf, mask.miss)
+filtered.vcf <- vcf[apply(mask.vcf, 1, sum) == 3,]
+filtered.vcf
+
+write.vcf(filtered.vcf, file = "Final.vcf.gz", mask = F)
+```
+
+A total of 1928 variants for 141 samples and 53 scaffolds are recovered. 
+
+Did the new filtering by DP work?
+```{r}
+# DP from the new filtered data:
+dp.filtered <- extract.gt(filtered.vcf, element = "DP", as.numeric = T)
+apply(dp.filtered, 1, min) %>% hist(xlab="Minimum DP", main="Histogram of minimum DP per variant site", border="grey70", col="grey90", breaks=10,  xlim=c(10,20))
+
+library(reshape2)
+dpf <- melt(dp.filtered, varnames=c('Index', 'Sample'), value.name = 'Depth', na.rm=TRUE)
+p <- ggplot(dpf, aes(x=Sample, y=Depth)) + geom_violin(fill="#C0C0C0", adjust=1.0,
+                                                         scale = "count", trim=TRUE)
+p <- p + theme_bw()
+p <- p + theme(axis.title.x = element_blank(), 
+               axis.text.x = element_text(angle = 60, hjust = 1, size=12))
+p <- p + scale_y_continuous(trans=scales::log2_trans(), 
+                              breaks=c(1, 10, 100, 800),
+                              minor_breaks=c(1:10, 2:10*10, 2:8*100))
+p <- p + theme(axis.title.y = element_text(size=12))
+p <- p + theme( panel.grid.major.y=element_line(color = "#A9A9A9", size=0.6) )
+p <- p + theme( panel.grid.minor.y=element_line(color = "#C0C0C0", size=0.2) )
+p <- p + stat_summary(fun.y=median, geom="point", shape=23, size=2)
+p
+```
+
+It did. We end up with 1,928 markers for 141 samples at a depth greater than 10x.
+
+Patrick, run all of this in the cluster by qrsh and filtering in R directly. I can't write to your folder to add the final filtering VCF.
