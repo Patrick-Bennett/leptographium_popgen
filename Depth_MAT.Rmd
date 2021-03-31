@@ -1,0 +1,177 @@
+---
+title: "MAT1"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+Based on the mat1_1_1 and mat1_1_2 loci from [*Leptographium procerum*](https://www.ncbi.nlm.nih.gov/nuccore/KC883456), I did depth assays to see presence/absence of genes. 
+
+After searching for the homolog proteins, I found that the regions of `CMW154_Contig94:9951-11159` that includes the two proteins LWAP_08037-RA and LWAP_08038-RA that are the best BLAST hits to the MAT1_1_1 gene and MAT1_2_1
+
+Lets see how they look.
+
+```{r}
+mat1 <- readRDS("mat1_depth.Rds")
+mat1.pop2 <- readRDS("mat1_others.Rds")
+
+colnames(mat1) <- gsub(colnames(mat1), pattern = "_dupmrk.bam", replacement = "")
+
+mat1 <- merge(mat1, mat1.pop2, by = c("Chrom","Pos"))
+
+library(reshape2)
+library(tidyverse)
+library(viridis)
+
+mat1.melt <- melt(mat1, id=c("Chrom","Pos"))
+```
+
+We have 3 genes: MAT1-1-1, MAT1-2-1 and the SLA gene.
+
+- In the MAT1 type we can find: <span style="color: green;">Complete SLA</span>, <span style="color: green;">Complete MAT1-1-1</span>, and <span style="color: green;">Complete MAT1-2-1</span>.
+- In the MAT2 type we can find:  <span style="color: green;">Complete SLA</span>, <span style="color: yellow;">Truncated MAT1-1-1</span>, and <span style="color: red;">Absent MAT1-2-1</span>.
+
+Lets see how this looks like:
+
+```{r, fig.height=12}
+sla <- mat1[mat1$Pos > 14590 & mat1$Pos < 17898, -c(1,2)]
+mat1_1_1 <- mat1[mat1$Pos > 11159 & mat1$Pos < 13083, -c(1,2)]
+mat1_2_1 <- mat1[mat1$Pos > 9951 & mat1$Pos < 10800, -c(1,2)]
+
+sla.avg <- apply(sla, 2, function (y){ sum(y > 0) })/nrow(sla) * 100 
+sla.avg <- tibble("sample"=names(sla.avg),sla.avg)
+
+mat1_1_1.avg <- apply(mat1_1_1, 2, function (y){ sum(y > 0) })/nrow(mat1_1_1) * 100 
+mat1_1_1.avg <- tibble("sample"=names(mat1_1_1.avg),mat1_1_1.avg)
+
+mat1_2_1.avg <- apply(mat1_2_1, 2, function (y){ sum(y > 0) })/nrow(mat1_2_1) * 100
+mat1_2_1.avg <- tibble("sample"=names(mat1_2_1.avg),mat1_2_1.avg)     
+
+all.cov <- merge(sla.avg,mat1_1_1.avg, by = "sample" ) %>% merge(.,mat1_2_1.avg, by = "sample" )
+all.cov.m <- as.matrix(all.cov[,-1])
+rownames(all.cov.m) <- all.cov[,1]
+
+vcfR::heatmap.bp(all.cov.m)
+```
+
+So, in that case: 
+
+# Mating type 1:
+
+```{r}
+mat1 <- all.cov[all.cov$sla.avg > 99 & all.cov$mat1_1_1.avg > 99 & all.cov$mat1_2_1.avg > 99,]
+mat1$mat <- "MAT_1"
+mat2 <- all.cov[!(all.cov$sla.avg > 99 & all.cov$mat1_1_1.avg > 99 & all.cov$mat1_2_1.avg > 99),]
+mat2$mat <- "MAT_2"
+
+mat.ann <- rbind(mat1,mat2)
+mat.ann$mat <- factor(mat.ann$mat)
+
+mat.ann.raw <- mat.ann
+```
+
+```{r}
+library(kableExtra)
+library(formattable)
+
+mat.ann <- mat.ann %>% mutate(
+    SLA = ifelse(sla.avg > 90,
+                  cell_spec(sla.avg, color = "green", bold = T),
+                  cell_spec(sla.avg, color = "red", italic = T)),
+    MAT1_1_1= ifelse(mat1_1_1.avg > 90,
+                  cell_spec(mat1_1_1.avg, color = "green", bold = T),
+                  cell_spec(mat1_1_1.avg, color = "red", italic = T)),
+    MAT1_2_1 = ifelse(mat1_2_1.avg > 90,
+                  cell_spec(mat1_2_1.avg, color = "green", bold = T),
+                  cell_spec(mat1_2_1.avg, color = "red", italic = T)),
+    mat = color_tile("blue", "orange")(mat)
+  )
+mat.ann [,-c(2,3,4)]  %>% 
+  kable(escape = F) %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(5, width = "3cm")
+```
+
+## Looking at the raw depth of coverage:
+
+### MAT1
+```{r, fig.height=60}
+colnames(mat1.melt) <- c("Chrom","Pos","sample","Depth")
+mat1.melt <- merge(mat1.melt, mat.ann.raw[,c(1,5)], by = "sample")
+
+ggplot(mat1.melt[mat1.melt$mat %in% "MAT_1",], aes(x=Pos, y=Depth)) + geom_line() + facet_grid(sample~.) + 
+  geom_segment(aes(y=100, yend=100, x=9951, xend=10800, color="MAT1_2_1"), arrow = arrow(length = unit(0.1, "inches")), size=3) + 
+  geom_segment(aes(y=100, yend=100,x=11159, xend=13083, color="MAT1_1_1"), arrow = arrow(length = unit(0.1, "inches")), size=3) + 
+  geom_segment(aes(y=100, yend=100, x=14590, xend=17898, color="SLA"), arrow = arrow(length = unit(0.1, "inches")), size=3) + theme_classic()
+```
+
+### MAT2
+```{r, fig.height=40}
+ggplot(mat1.melt[mat1.melt$mat %in% "MAT_2",], aes(x=Pos, y=Depth)) + geom_line() + facet_grid(sample ~ .) + 
+  geom_segment(aes(y=100, yend=100, x=9951, xend=10800, color="MAT1_2_1"), arrow = arrow(length = unit(0.1, "inches")), size=3) + 
+  geom_segment(aes(y=100, yend=100,x=11159, xend=13083, color="MAT1_1_1"), arrow = arrow(length = unit(0.1, "inches")), size=3) + 
+  geom_segment(aes(y=100, yend=100, x=14590, xend=17898, color="SLA"), arrow = arrow(length = unit(0.1, "inches")), size=3) + theme_classic()
+```
+
+# Proportion of mating types per population
+
+The idea is to test that the mating types are in a 1:1 proportion in the population in order to propose that sexual reproduction is occurring. Lets test that hypothesis:
+
+```{r}
+library(poppr)
+# Setting up population vectors:
+lepto.snp <- readRDS("LeptoPNW.snpclone")
+
+# Removing unused samples
+mat.ann.raw <- mat.ann.raw[mat.ann.raw$sample %in% indNames(lepto.snp), ]
+```
+
+## Mating proportion per site
+
+```{r}
+pvals.mat <- lapply(levels(lepto.snp@strata$Site), function (x) {
+  samples.site <- rownames(lepto.snp@strata[lepto.snp@strata$Site %in% x,])
+  mat.sub <- mat.ann.raw[mat.ann.raw$sample %in% samples.site,]
+  mat.tab <- table(mat.sub$mat) %>% unname
+  max.prop <- max(mat.tab)/min(mat.tab) %>% round(digits = 2)
+  expect <- nrow(mat.sub)/2
+  chisq.val <- (table(mat.sub$mat)[1] - expect)^2/expect
+  chisq.val <- (5 - expect)^2/5
+  qchisq(chisq.val, df = 1)
+  chisq.val <- (table(mat.sub$mat)[1] - expect)^2/expect + (table(mat.sub$mat)[2] - expect)^2/expect
+  chisq.res <- chisq.test(table(mat.sub$mat), p = c(0.5,0.5))
+  data.frame("Site"=x, "MAT1"=table(mat.sub$mat)[1] %>% unname, "MAT2"=table(mat.sub$mat)[2] %>% unname, "Proportions"=paste0(round(max.prop,digits = 2),":",1), "Chisq"=chisq.res$p.value)
+}) %>% bind_rows()
+
+pvals.mat %>%
+  kable(escape = F) %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(4, width = "3cm")
+```
+
+
+## Mating proportion per strand
+
+```{r}
+pvals.mat <- lapply(levels(lepto.snp@strata$Stand), function (x) {
+  samples.site <- rownames(lepto.snp@strata[lepto.snp@strata$Stand %in% x,])
+  mat.sub <- mat.ann.raw[mat.ann.raw$sample %in% samples.site,]
+  mat.tab <- table(mat.sub$mat) %>% unname
+  max.prop <- max(mat.tab)/min(mat.tab) %>% round(digits = 2)
+  expect <- nrow(mat.sub)/2
+  chisq.val <- (table(mat.sub$mat)[1] - expect)^2/expect
+  chisq.val <- (5 - expect)^2/5
+  qchisq(chisq.val, df = 1)
+  chisq.val <- (table(mat.sub$mat)[1] - expect)^2/expect + (table(mat.sub$mat)[2] - expect)^2/expect
+  chisq.res <- chisq.test(table(mat.sub$mat), p = c(0.5,0.5))
+  chisq.res$p.value
+  data.frame("Stand"=x, "MAT1"=table(mat.sub$mat)[1] %>% unname, "MAT2"=table(mat.sub$mat)[2] %>% unname, "Proportions"=paste0(round(max.prop,digits = 2),":",1), "Chisq"=chisq.res$p.value)
+}) %>% bind_rows()
+
+pvals.mat %>%
+  kable(escape = F) %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(4, width = "3cm")
+```
