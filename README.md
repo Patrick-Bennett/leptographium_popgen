@@ -1,16 +1,15 @@
-# Population genomics of *Leptographium*
+# Population genomics of *Leptographium wageneri*
+Repository for data and code related to analyses of population structure of the black stain root disease fungus *Leptographium wageneri*
 
-***
+# Contents
+## Bioinformatics
+Aligning raw reads to reference genome, calling SNPs, assigning genotypes, quality filtering
 
-# Steps:
+## Mating Type Analyses
+Testing for the presence and structure of genes at mating type loci, assigning mating types to each sample, calculating mating type ratios
 
-1. [Moving the reads](p1_moving_reads.Rmd)
-2. [Aligning the reads to the reference genome](p2_read_alignment.Rmd)
-2. [Genotyping](p3_genotyping.Rmd)
+## Phylogenetics
+Phylogenetic reconstruction of *L. wageneri* vars. *pseudotsugae* and *wageneri*
 
-
-# Tools
-
-1. bash
-2. bash, BWA, samtools and PICARD
-3. bash, samtools, PICARD, and GATK
+## Population Genomics
+Analyses of population structure and differentiation

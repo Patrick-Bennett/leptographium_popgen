@@ -1,0 +1,76 @@
+---
+title: "RAxML_Tree_LWP_LWW"
+author: "Patrick Bennett, Javier Tabima"
+date: "4/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(ape)
+library(phangorn)
+library(ggtree)
+library(RColorBrewer)
+library(ggplot2)
+library(ggrepel)
+```
+
+
+## Reading in tree
+
+```{r}
+lepto.tree<-read.tree("2020 RAxML Trees/Lepto_ALL_RAxML_FINAL.tre")
+```
+
+## Rerooting the tree
+
+```{r}
+lepto.tree <- midpoint(lepto.tree)
+```
+
+## Adding labels using fortify
+
+```{r}
+lepto.tree.fort <- fortify(lepto.tree)
+lepto.tree.fort$bootstrap <- NA
+lepto.tree.fort$bootstrap[!lepto.tree.fort$isTip]<-lepto.tree$node.label
+```
+
+## Filter bootstrap labels to remove those less than 70
+
+```{r}
+q3 <- ggtree(lepto.tree.fort)
+d3 <- q3$data
+d3 <- d3[!d3$isTip,]
+d3$label <- as.numeric(d3$label)
+d3 <- d3[d3$label > 70,]
+```
+
+## Read in population metadata
+
+```{r}
+pop_metadata<-read.csv("Leptographium_PopData_LWP_LWW_2020.csv")
+```
+
+## Visualize tree with ggtree
+
+```{r, warning=FALSE, fig.height=16,fig.width=8.5}
+RAXtre<-q3
+RAXtre<-RAXtre %<+% pop_metadata+
+  geom_tiplab(aes(color=Site), size=3,offset = 0.005,fontface="bold",show.legend=FALSE)+
+  #geom_text_repel(data=d3,aes(label=label),size=3,nudge_x=-0.05,nudge_y=0.05)+
+  geom_tippoint(aes(color=Site),size=0,alpha=0,shape=16)+
+  scale_color_manual(values=brewer.pal(n=6,name="Dark2"),labels=c("BL","DC","MP","FG","RB","SP"), name="Plantation")+
+  geom_nodepoint(data=d3,size=2,shape=21,aes(fill=cut(as.numeric(bootstrap),c(70,80,90,Inf),right=F, include.lowest=T)))+
+  scale_fill_manual(name = "Bootstrap support",values = c("white","grey60","black"),labels = c("70-79", "80-89", "90-100"))+
+  guides(colour=guide_legend(override.aes=list(size=10,shape=16,alpha=1)))+
+  theme_tree(legend.position=c(0.2,0.75),legend.text=element_text(size=12),legend.title=element_text(size=12),text=element_text(size=12,face="bold"),legend.margin=margin(t = 0, unit='cm'),legend.box.margin=margin(t = 0, unit='cm'))+
+  xlim(0,1.7)+
+  geom_treescale(x=0.075,y=-5,width=0.5,fontsize=3,offset=0.5)
+
+RAXtre
+```
+
