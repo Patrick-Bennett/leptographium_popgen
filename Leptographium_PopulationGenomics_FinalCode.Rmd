@@ -1,0 +1,404 @@
+---
+title: "Leptographium Population Genomics"
+author: "Patrick Bennett, Javier Tabima"
+date: "3/31/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ade4)
+library(adegenet)
+library(vcfR)
+library(poppr)
+library(ape)
+library(RColorBrewer)
+library(ggtree)
+library(mmod)
+library(ggplot2)
+library(phangorn)
+library(ggrepel)
+library(treeio)
+library(tidytree)
+library(phytools)
+library(ggpubr)
+library(reshape2)
+```
+
+#Analyses of LWP and LWW Structure and Differentiation
+
+```{r}
+#read vcf file with LWP and LWW (combined species dataset)
+Lepto_All.VCF <- read.vcfR("Leptographium_filtered_vcf/Lepto2020_LWP_LWW_Filtered_0414.vcf.gz")
+
+#look at VCF metadata
+show(Lepto_All.VCF)
+```
+
+```{r}
+#Get average read depth per sample:
+dp.all <- extract.gt(Lepto_All.VCF,  element = "DP", as.numeric = TRUE)
+dpf <- melt(dp.all, varnames = c("Index", "Sample"),
+            value.name = "Depth", na.rm = TRUE)
+dpf <- dpf[ dpf$Depth > 0, ]
+
+AvgDepth_Sample<-aggregate(x = dpf$Depth, by = list(dpf$Sample),FUN = mean)
+AvgDepth_Sample
+
+range(AvgDepth_Sample$x)
+```
+
+```{r}
+#Add population data and check that all the samples in the VCF and the population data frame are included:
+pop.data.all <- read.csv("Leptographium_PopData_LWP_LWW_2020.csv", header = TRUE)
+
+all(colnames(Lepto_All.VCF@gt)[-1] == pop.data.all$Isolate)
+```
+
+```{r}
+#Pairwise genetic differentiation between LWW and LWP:
+LWWDiff<-pairwise_genetic_diff(Lepto_All.VCF,pop.data.all$Taxon,method="nei")
+#Take average of Gprimest column
+colMeans(LWWDiff[,c(4:ncol(LWWDiff))], na.rm = TRUE)
+```
+
+```{r}
+#Find proportion of SNP variants with G'ST > 0.70:
+GprimestLW<-LWWDiff[,5]
+GprimestLW<-na.omit(GprimestLW)
+length(LWWDiff$POS[LWWDiff$Gprimest_LWP_LWW>0.70]) 
+# 54167
+#Total number of SNPs (POS):
+length(LWWDiff$POS)
+
+###Divide answer above by the total number of SNPs (POS):
+54167/length(LWWDiff$POS)
+```
+
+#Population Genomic Analyses for LWP Populations
+
+```{r}
+###Leptographium wageneri var. pseudotsugae single-species VCF file
+#read vcf file
+Lepto2020_pseudo.VCF <- read.vcfR("Leptographium_filtered_vcf/Lepto2020_pseudo_filtered_0413.vcf.gz")
+
+show(Lepto2020_pseudo.VCF)
+```
+
+```{r}
+###ADD IN POPULATION DATA:
+pop.data <- read.csv("Lepto_pseudo_PopData_2020.csv", header = TRUE)
+
+##Check that all the samples in the VCF and the population data frame are included:
+all(colnames(Lepto2020_pseudo.VCF@gt)[-1] == pop.data$Isolate)
+
+##Converting the dataset to a genlight object
+gl.Lepto2020_pseudo <- vcfR2genlight(Lepto2020_pseudo.VCF)
+
+#Set ploidy
+ploidy(gl.Lepto2020_pseudo) <- 1
+
+#Add populations from pop dataset 
+pop(gl.Lepto2020_pseudo) <- pop.data$Site
+
+#Subset OR populations from WRTF, STF, and MP
+LeptoPNW<-gl.Lepto2020_pseudo
+
+#SET POPULATION STRATA
+PNW.dat<-pop.data
+strata(LeptoPNW)<-PNW.dat
+strata(LeptoPNW)<-strata(LeptoPNW,~Site/Stand)
+
+LeptoPNWSite<-setPop(LeptoPNW,~Site)
+pop(LeptoPNWSite)
+#Subset to stand
+LeptoPNWStand<-setPop(LeptoPNW,~Stand)
+pop(LeptoPNWStand)
+```
+
+```{r}
+#ANALYSIS OF MOLECULAR VARIANCE (AMOVA) for LWP populations
+hier(LeptoPNW)<-~Site/Stand
+amova.result <- poppr.amova(LeptoPNW,hier=~Site/Stand)
+amova.result
+amova.test <- randtest(amova.result,nrepet = 999) # Test for significance
+plot(amova.test)
+amova.test
+```
+
+```{r}
+###DISCRIMINANT ANALYSIS OF PRINCIPAL COMPONENTS (DAPC)###
+#scatter
+lepto.dapc <- dapc(LeptoPNWSite,n.pca=7,n.da=2)
+
+#pdf(file="New_Lepto_DAPC_2020_0415.pdf",height=6,width=8)
+dapscatter<-scatter.dapc(lepto.dapc, cex = 2, col=cols, legend = TRUE, clabel = F, posi.leg = "bottomright", scree.pca = FALSE,scree.da=FALSE, cleg = 1,txt.leg=c("MP","FG","RB","SP"))
+#dev.off()
+```
+
+```{r}
+dapc.results <- melt(dapc.results)
+colnames(dapc.results) <- c("Original_Pop","Sample","Assigned_Pop","Posterior_membership_probability")
+
+labels<-c(MP="MP",STF="FG",WRTF="RB",WSTF="SP")
+
+p2 <- ggplot(dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Pop))
+p2 <- p2 + geom_bar(stat='identity') 
+p2 <- p2 + scale_fill_manual(values = cols,labels=c("MP","FG","RB","SP"),name="Assigned\npopulation")
+p2 <- p2 + facet_grid(~Original_Pop,labeller=labeller(Original_Pop=labels),scales = "free")
+p2<-p2+ylab("Posterior probability of membership")
+p2 <- p2 + theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#p2<-p2+coord_flip()
+
+p2
+#ggsave("Lepto_COMPO_Faceted_0329_2021.tiff",height=6,width=8,dpi=300,compression="lzw")
+```
+
+```{r}
+###DAPC ON GROUPS FROM FIND.CLUSTERS PCAs retained = 150
+xx<-find.clusters(LeptoPNW,n.pca=150)
+#9 Clusters optimal here
+colors9<-brewer.pal(9,"Set1")
+#Show BIC graph and results from find.clusters with k=2-9
+#k=2
+x2<-find.clusters(LeptoPNW,n.pca=150,n.clust=2)
+x3<-find.clusters(LeptoPNW,n.pca=150,n.clust=3)
+x4<-find.clusters(LeptoPNW,n.pca=150,n.clust=4)
+x5<-find.clusters(LeptoPNW,n.pca=150,n.clust=5)
+x6<-find.clusters(LeptoPNW,n.pca=150,n.clust=6)
+x7<-find.clusters(LeptoPNW,n.pca=150,n.clust=7)
+x8<-find.clusters(LeptoPNW,n.pca=150,n.clust=8)
+x9<-xx
+
+#PCs retained = 30
+x2dapc<-dapc(LeptoPNW,x2$grp)
+x3dapc<-dapc(LeptoPNW,x3$grp)
+x4dapc<-dapc(LeptoPNW,x4$grp)
+x5dapc<-dapc(LeptoPNW,x5$grp)
+x6dapc<-dapc(LeptoPNW,x6$grp)
+x7dapc<-dapc(LeptoPNW,x7$grp)
+x8dapc<-dapc(LeptoPNW,x8$grp)
+x9dapc<-xxdapc
+```
+
+```{r}
+x9dapc.results <- as.data.frame(x9dapc$posterior)
+x9dapc.results$pop <- pop(LeptoPNWSite)
+x9dapc.results$indNames <- rownames(x9dapc.results)
+x9dapc.results <- melt(x9dapc.results)
+colnames(x9dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+
+labels<-c(MP="MP",STF="FG",WRTF="RB",WSTF="SP")
+
+px9 <- ggplot(x9dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px9 <- px9 + geom_bar(stat='identity') 
+px9 <- px9 + scale_fill_manual(values = colors9,name="Assigned\ncluster")
+px9 <- px9 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px9 <- px9 + ylab("Posterior probability of membership")
+px9 <- px9 + theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+
+px9
+
+ggsave("Lepto_DAPC_9CLUSTERS_COMPO_Faceted_0329_2021.png",height=6,width=8,dpi=300)
+```
+
+```{r}
+x8dapc.results <- as.data.frame(x8dapc$posterior)
+x8dapc.results$pop <- pop(LeptoPNWSite)
+x8dapc.results$indNames <- rownames(x8dapc.results)
+x8dapc.results <- melt(x8dapc.results)
+colnames(x8dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px8 <- ggplot(x8dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px8 <- px8 + geom_bar(stat='identity',show.legend=FALSE) 
+px8 <- px8 + scale_fill_manual(values = colors9)
+px8 <- px8 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px8 <- px8 + ylab("Posterior probability of membership") + theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px8
+
+x7dapc.results <- as.data.frame(x7dapc$posterior)
+x7dapc.results$pop <- pop(LeptoPNWSite)
+x7dapc.results$indNames <- rownames(x7dapc.results)
+x7dapc.results <- melt(x7dapc.results)
+colnames(x7dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px7 <- ggplot(x7dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px7 <- px7 + geom_bar(stat='identity',show.legend=FALSE) 
+px7 <- px7 + scale_fill_manual(values = colors9)
+px7 <- px7 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px7 <- px7 + ylab("Posterior probability of membership") + theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px7
+
+x6dapc.results <- as.data.frame(x6dapc$posterior)
+x6dapc.results$pop <- pop(LeptoPNWSite)
+x6dapc.results$indNames <- rownames(x6dapc.results)
+x6dapc.results <- melt(x6dapc.results)
+colnames(x6dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px6 <- ggplot(x6dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px6 <- px6 + geom_bar(stat='identity',show.legend=FALSE) 
+px6 <- px6 + scale_fill_manual(values = colors9)
+px6 <- px6 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px6 <- px6 + ylab("Posterior probability of membership")+ theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px6
+
+x5dapc.results <- as.data.frame(x5dapc$posterior)
+x5dapc.results$pop <- pop(LeptoPNWSite)
+x5dapc.results$indNames <- rownames(x5dapc.results)
+x5dapc.results <- melt(x5dapc.results)
+colnames(x5dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px5 <- ggplot(x5dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px5 <- px5 + geom_bar(stat='identity',show.legend=FALSE) 
+px5 <- px5 + scale_fill_manual(values = colors9)
+px5 <- px5 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px5 <- px5 + ylab("Posterior probability of membership")+ theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px5
+
+x4dapc.results <- as.data.frame(x4dapc$posterior)
+x4dapc.results$pop <- pop(LeptoPNWSite)
+x4dapc.results$indNames <- rownames(x4dapc.results)
+x4dapc.results <- melt(x4dapc.results)
+colnames(x4dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px4 <- ggplot(x4dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px4 <- px4 + geom_bar(stat='identity',show.legend=FALSE) 
+px4 <- px4 + scale_fill_manual(values = colors9)
+px4 <- px4 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px4 <- px4 + ylab("Posterior probability of membership")+ theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px4
+
+x3dapc.results <- as.data.frame(x3dapc$posterior)
+x3dapc.results$pop <- pop(LeptoPNWSite)
+x3dapc.results$indNames <- rownames(x3dapc.results)
+x3dapc.results <- melt(x3dapc.results)
+colnames(x3dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px3 <- ggplot(x3dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px3 <- px3 + geom_bar(stat='identity',show.legend=FALSE) 
+px3 <- px3 + scale_fill_manual(values = colors9)
+px3 <- px3 + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px3 <- px3 + ylab("Posterior probability of membership")+ theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px3
+
+x2dapc.results <- as.data.frame(x2dapc$posterior)
+x2dapc.results$pop <- pop(LeptoPNWSite)
+x2dapc.results$indNames <- rownames(x2dapc.results)
+x2dapc.results <- melt(x2dapc.results)
+colnames(x2dapc.results) <- c("Original_Pop","Sample","Assigned_Cluster","Posterior_membership_probability")
+px2 <- ggplot(x2dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Cluster))
+px2 <- px2 + geom_bar(stat='identity',show.legend=FALSE) 
+px2 <- px2 + scale_fill_manual(values = colors9)
+px2 <- px2 + ylab("Posterior probability of membership") + facet_grid(~Original_Pop, scales = "free",labeller=labeller(Original_Pop=labels))
+px2 <- px2 + theme(axis.text.x = element_blank(),axis.ticks.x.top = element_blank(),axis.ticks.x.bottom = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank())
+#px2
+
+px9<-px9+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px8<-px8+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px7<-px7+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px6<-px6+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px5<-px5+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px4<-px4+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px3<-px3+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+px2<-px2+theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+
+
+pxgrid<-ggarrange(px2,px3,px4,px5,px6,px7,px8,px9, ncol=2,nrow=4,common.legend=TRUE,legend="right",labels=c("(A)","(B)","(C)","(D)","(E)","(F)","(G)","(H)"),font.label=list(size=12))
+
+pxgrid<-annotate_figure(pxgrid, left = text_grob("Posterior probability of membership", color = "black", rot = 90), bottom=text_grob("Sample"))
+
+pxgrid
+
+#ggsave("Lepto_PlotGrid_2-9clusters_COMPO.tiff",dpi=300,height=240,width=180,units="mm",compression="lzw")
+```
+
+```{r}
+#HEATMAPS OF PAIRWISE G'ST AMONG STANDS:
+
+##Converting the dataset to a genind object
+genind.LeptoPNW <- vcfR2genind(Lepto2020_pseudo.VCF)
+#Set ploidy
+ploidy(genind.LeptoPNW) <- 1
+#Add populations from pop dataset 
+strata(genind.LeptoPNW)<-pop.data
+strata(genind.LeptoPNW)<-strata(genind.LeptoPNW,~Site/Stand)
+
+#Subset to sites and stands
+genind.LeptoPNW_Site<-setPop(genind.LeptoPNW,~Site)
+genind.LeptoPNW_Stand<-setPop(genind.LeptoPNW,~Stand)
+
+#Among plantations:
+PlantationGst<-pairwise_Gst_Hedrick(genind.LeptoPNW_Site)
+
+#GGplot HeatMap:
+PlantationGst<-as.matrix(PlantationGst)
+
+row.names(PlantationGst)<-gsub("STF","FG",row.names(PlantationGst))
+row.names(PlantationGst)<-gsub("WRTF","RB",row.names(PlantationGst))
+row.names(PlantationGst)<-gsub("WFG","SP",row.names(PlantationGst))
+colnames(PlantationGst)<-gsub("STF","FG",row.names(PlantationGst))
+colnames(PlantationGst)<-gsub("WRTF","RB",row.names(PlantationGst))
+colnames(PlantationGst)<-gsub("WFG","SP",row.names(PlantationGst))
+
+meltmat <- melt(PlantationGst)
+
+PlantHeat<-ggplot(data = meltmat, aes(Var2, Var1, fill = value,label=round(value,digits=2)))+
+  geom_tile(color = "white")+
+  scale_fill_gradient(low = "white", high = "red", limit = c(0,1), space = "Lab",name  =expression("G'"[ST])) +
+  geom_text(size=4,vjust=0.5,hjust=0.5)+
+  theme_classic()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),axis.text.y=element_text(size=12))+
+  xlab(label="Plantation")+
+  ylab(label="Plantation")+
+  coord_fixed()
+
+#ggsave("Lepto_pseudo_PlantationGst_Heatmap_0329_2021.tiff",dpi=300,compression="lzw")
+
+#Among stands:
+StandGst<-pairwise_Gst_Hedrick(genind.LeptoPNW_Stand)
+
+row.names(StandGst)<-gsub("STF","FG",row.names(StandGst))
+row.names(StandGst)<-gsub("WRTF","RB",row.names(StandGst))
+colnames(StandGst)<-gsub("STF","FG",row.names(StandGst))
+colnames(StandGst)<-gsub("WRTF","RB",row.names(StandGst))
+
+row.names(StandGst)<-gsub("WFG","SP",row.names(StandGst))
+colnames(StandGst)<-gsub("WFG","SP",row.names(StandGst))
+
+StandGst<-as.matrix(StandGst)
+meltmat2 <- melt(StandGst)
+
+StandHeat<-ggplot(data = meltmat2, aes(Var2, Var1, fill = value,label=round(value,digits=2)))+
+  geom_tile(color = "white")+
+  scale_fill_gradient(low = "white", high = "red", limit = c(0,1), space = "Lab",name  =expression("G'"[ST])) +
+  geom_text(size=4,hjust=0.5,vjust=0.5)+
+  theme_classic()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),axis.text.y=element_text(size=12))+
+  xlab(label="Stand")+
+  ylab(label="Stand")+
+  coord_fixed()
+
+StandHeat
+#ggsave("Lepto_pseudo_StandGst_Heatmap_0329_2021.png",height=8,width=12,units="in",dpi=300)
+```
+
+```{r}
+#Read in geographic coordinates for the LWP samples
+coords<-read.csv("Lepto_pseudo_2020_9Clusters_GPS.csv")
+points<-data.frame(coords[,3:4],row.names=coords[,1])
+points<-na.omit(points)
+
+#Matrix of pairwise genetic distance among SAMPLES (MATRIX OF genetic distance!):
+Lepto_bitwise<-bitwise.dist(LeptoPNW,mat=TRUE)
+CoordNames<-as.character(row.names(points))
+LeptoMantel<-LeptoPNW[(indNames(LeptoPNW) %in% CoordNames)]
+Lepto_Mantel.bitwise<-bitwise.dist(LeptoMantel,euclidean=TRUE)
+
+###Important to make sure that both genetic and geographic distance matrices are in the same order!###
+
+#Geographic distance matrix
+Lepto_geodist<-dist(points,method="euclidean")
+Lepto_geodist<-as.dist(Lepto_geodist)
+
+#Mantel's Test
+set.seed(999)
+r<-mantel.rtest(Lepto_Mantel.bitwise,Lepto_geodist,nrepet=10000)
+r
+```
